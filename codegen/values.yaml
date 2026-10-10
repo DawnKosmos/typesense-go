@@ -1,0 +1,13 @@
+package: api
+output: api/type.gen.go
+generate:
+  models: true
+output-options:
+  skip-prune: true
+  generate-types-for-anonymous-schemas: true
+  prefer-skip-optional-pointer: true
+  prefer-skip-optional-pointer-with-omitzero: true
+  name-normalizer: ToCamelCaseWithInitialisms
+  overlay:
+    path: codegen/models.overlay.yaml
+    strict: true

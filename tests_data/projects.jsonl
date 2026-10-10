@@ -1,0 +1,4 @@
+{"id":"project-shared","name":"Shared handbook","organization_id":"org-alpha","owner_id":"alice","archived":false,"confidential":"alpha shared secret"}
+{"id":"project-private","name":"Private budget","organization_id":"org-alpha","owner_id":"bob","archived":false,"confidential":"alpha private secret"}
+{"id":"project-beta","name":"Other organization handbook","organization_id":"org-beta","owner_id":"mallory","archived":false,"confidential":"beta secret"}
+{"id":"project-archived","name":"Archived handbook","organization_id":"org-alpha","owner_id":"alice","archived":true,"confidential":"archived secret"}

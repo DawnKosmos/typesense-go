@@ -1,0 +1,6 @@
+{"id":"grant-alice-shared","user_id":"alice","project_id":"project-shared"}
+{"id":"grant-bob-shared","user_id":"bob","project_id":"project-shared"}
+{"id":"grant-bob-private","user_id":"bob","project_id":"project-private"}
+{"id":"grant-mallory-beta","user_id":"mallory","project_id":"project-beta"}
+{"id":"grant-alice-beta","user_id":"alice","project_id":"project-beta"}
+{"id":"grant-alice-archived","user_id":"alice","project_id":"project-archived"}

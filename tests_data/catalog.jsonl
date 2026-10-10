@@ -1,0 +1,4 @@
+{"id":"catalog-pack","name":"Blue hiking backpack","category":"outdoors","price":49.5,"in_stock":true,"tags":["hiking","travel"],"details":{"color":"blue","weight":800},"location":[52.5200,13.4050],"embedding":[1,0,0]}
+{"id":"catalog-tent","name":"Red camping tent","category":"outdoors","price":149,"in_stock":false,"tags":["camping","travel"],"details":{"color":"red","weight":2000},"location":[52.5210,13.4060],"embedding":[0.8,0.6,0]}
+{"id":"catalog-mug","name":"Red coffee mug","category":"kitchen","price":12.5,"in_stock":true,"tags":["coffee","home"],"details":{"color":"red","weight":250},"location":[48.8566,2.3522],"embedding":[0,1,0]}
+{"id":"catalog-bottle","name":"Blue water bottle","category":"kitchen","price":25,"in_stock":true,"tags":["travel","home"],"details":{"color":"blue","weight":200},"location":[51.5074,-0.1278],"embedding":[0,0,1]}

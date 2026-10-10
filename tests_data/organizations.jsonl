@@ -1,0 +1,2 @@
+{"id":"org-alpha","name":"Alpine Labs","plan":"pro","secret":"alpha-billing-token"}
+{"id":"org-beta","name":"Beacon Labs","plan":"basic","secret":"beta-billing-token"}

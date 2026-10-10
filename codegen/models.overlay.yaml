@@ -1,0 +1,57 @@
+overlay: 1.0.0
+info:
+  title: Go type reference compatibility
+  version: 0.1.0
+actions:
+  - target: $.components.schemas.CollectionUpdateSchema.properties['metadata','synonym_sets']
+    description: Nil means unchanged; non-nil empty maps and slices explicitly clear these settings.
+    update:
+      x-omitempty: false
+      x-omitzero: true
+  - target: $.paths['/config'].post.responses
+    description: Typesense 30.2 returns 201 for configuration updates; retain 200 compatibility.
+    update:
+      '201':
+        description: Configuration updated.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessStatus'
+  - target: $.components.schemas.ApiKeysResponse.properties.keys
+    description: Match the spec's explicit Go type to acronym normalization.
+    update:
+      x-go-type: '[]*APIKey'
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.drop_tokens_threshold
+    description: Preserve explicit zero to disable token dropping; MultiSearchCollectionParameters inherits this override.
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.typo_tokens_threshold
+    description: Preserve explicit zero to disable typo tolerance through the threshold.
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.facet_query_num_typos
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.per_page
+    description: Distinguish facet-only searches from the default number of document hits.
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.limit
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.highlight_affix_num_tokens
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.snippet_threshold
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.max_extra_prefix
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas['SearchParameters','MultiSearchParameters'].properties.max_extra_suffix
+    update:
+      x-go-type-skip-optional-pointer: false
+  - target: $.components.schemas.NLSearchModelBase.properties['temperature','top_p']
+    description: Preserve explicit zero sampling values in inherited create, update, and response models.
+    update:
+      x-go-type-skip-optional-pointer: false

@@ -1,0 +1,3 @@
+{"id":"alice","name":"Alice","email":"alice@example.test","organization_id":"org-alpha","rank":2}
+{"id":"bob","name":"Bob","email":"bob@example.test","organization_id":"org-alpha","rank":1}
+{"id":"mallory","name":"Mallory","email":"mallory@example.test","organization_id":"org-beta","rank":3}
