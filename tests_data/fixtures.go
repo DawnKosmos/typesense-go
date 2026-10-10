@@ -9,7 +9,6 @@ import (
 const (
 	ContainerImage                  = "typesense/typesense:30.2"
 	APIKey                          = "integration-test-key"
-	Prefix                          = "integration_"
 	ContainerTimeout                = 2 * time.Minute
 	RequestTimeout                  = 10 * time.Second
 	CollectionsName                 = "collections"

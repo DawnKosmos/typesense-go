@@ -14,7 +14,7 @@ import (
 func scopedKeys(t *testing.T, client *typesense.Client, server string) {
 	fixtures := accessFixture(t, client)
 	parent := createSearchKey(t, client, data.ProjectsCollection)
-	users, organizations := typesense.Prefix(data.UsersCollection), typesense.Prefix(data.OrganizationsCollection)
+	users, organizations := data.UsersCollection, data.OrganizationsCollection
 	filter := fmt.Sprintf("organization_id:=%s && archived:=false && $%s(user_id:=%s)", data.AlphaOrganizationID, data.GrantsCollection, data.AliceID)
 	projection := fmt.Sprintf("id,name,organization_id,$%s(id,name),$%s(id,name)", data.UsersCollection, data.OrganizationsCollection)
 	scoped, err := typesense.GenerateScopedSearchKey(parent.Value, map[string]any{
@@ -116,7 +116,7 @@ func scopedKeys(t *testing.T, client *typesense.Client, server string) {
 	})
 	t.Run("MultiSearchEnforcesScopes", func(t *testing.T) {
 		result, err := restricted.MultiSearch().Perform(t.Context(), nil, api.MultiSearchSearchesParameter{Searches: []api.MultiSearchCollectionParameters{
-			{Collection: typesense.Prefix(data.ProjectsCollection), Q: "*", QueryBy: "name", IncludeFields: "*"},
+			{Collection: data.ProjectsCollection, Q: "*", QueryBy: "name", IncludeFields: "*"},
 		}})
 		requireNoError(t, err)
 		if len(result.Results) != 1 || result.Results[0].Found != 1 || len(result.Results[0].Hits) != 1 || result.Results[0].Hits[0].Document["id"] != data.SharedProjectID {

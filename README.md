@@ -110,7 +110,6 @@ type Product struct {
     Location [2]float64 `json:"location" tyse:"index,type:geopoint"`
 }
 
-typesense.SetPrefix("dev_") // configure once before constructing clients or schemas
 schema, err := typesense.ToSchema(Product{})
 ```
 
@@ -124,13 +123,11 @@ Untagged embedded structs are flattened. Fields default to `index:false`;
 `reference:collection.field`, and `type:TYPE`. Pointer fields require an explicit
 `optional` tag. Go `int` and `int32` map to `int32`, matching the original utility.
 
-The prefix applies to inferred schema names, collection handles, alias names and
-targets, and references in both created and updated schemas. Search, MultiSearch,
-and scoped-key generation also prefix JOIN collection names in `filter_by`,
-`include_fields`, `exclude_fields`, `sort_by`, and `facet_by`, including nested
-JOINs. Already prefixed names and quoted values stay unchanged. Caller schemas
-and search parameters are not mutated. Unknown options, unsupported
-types, invalid dimensions, and duplicate field names produce errors.
+Collection names, aliases, schema references, and JOIN expressions are used as
+supplied; there is no automatic collection prefixing. Inferred schema names are
+lowercase Go type names. Caller schemas and search parameters are not mutated.
+Unknown options, unsupported types, invalid dimensions, and duplicate field names
+produce errors.
 
 For collection updates, `Metadata` and `SynonymSets` use only `omitzero`: nil
 leaves a setting unchanged, while a non-nil empty map or slice clears it. Explicit
@@ -163,8 +160,8 @@ key, err := typesense.NewScopedSearchKeyBuilder(parentSearchKey).
 ```
 
 Use the result as `X-TYPESENSE-API-KEY` for searches. JOINs require the appropriate
-schema references; collection names in expressions receive the configured prefix
-automatically. Set expiry earlier than the parent's expiry.
+schema references and exact collection names in expressions. Set expiry earlier
+than the parent's expiry.
 
 The builder also provides `Query`, `QueryBy`, `SortBy`, `FacetBy`, `GroupBy`,
 `Page`, `PerPage`, `UseCache`, and `CacheTTL` (seconds). `Param` accepts any

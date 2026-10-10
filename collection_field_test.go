@@ -11,8 +11,6 @@ import (
 )
 
 func TestCollectionFields(t *testing.T) {
-	typesense.SetPrefix(data.Prefix)
-	t.Cleanup(func() { typesense.SetPrefix("") })
 	t.Run("NamesOptionsAndReferences", func(t *testing.T) {
 		type Embedded struct {
 			Code string `json:"code" tyse:"index"`
@@ -30,7 +28,7 @@ func TestCollectionFields(t *testing.T) {
 		}
 		name, fields, err := typesense.ToFieldWithName((*Item)(nil))
 		requireNoError(t, err)
-		if name != data.Prefix+"item" || len(fields) != 6 {
+		if name != "item" || len(fields) != 6 {
 			t.Fatalf("wrong name or fields: %s %+v", name, fields)
 		}
 		byName := map[string]api.Field{}
@@ -40,7 +38,7 @@ func TestCollectionFields(t *testing.T) {
 		if byName["embedding"].Type != string(api.FLOATARRAY) || byName["embedding"].NumDim != 384 {
 			t.Fatalf("bad vector field: %+v", byName["embedding"])
 		}
-		if byName["owner_id"].Reference != data.Prefix+"users.id" || byName["owner_id"].Optional != optional.True {
+		if byName["owner_id"].Reference != "users.id" || byName["owner_id"].Optional != optional.True {
 			t.Fatalf("bad reference: %+v", byName["owner_id"])
 		}
 		if byName["secret"].Store != optional.False || byName["default"].Store != optional.None || byName["default"].Index != optional.False {
@@ -53,9 +51,6 @@ func TestCollectionFields(t *testing.T) {
 		fieldsFromType := typesense.ToField(reflect.TypeFor[Item]())
 		if !reflect.DeepEqual(fieldsFromType, fields) {
 			t.Fatal("reflect.Type and pointer inference differ")
-		}
-		if typesense.Prefix(name) != name {
-			t.Fatal("prefix applied twice")
 		}
 	})
 	t.Run("InferredAndExplicitTypes", func(t *testing.T) {
@@ -132,8 +127,6 @@ func TestCollectionFields(t *testing.T) {
 }
 
 func TestCollectionFieldEdgeCases(t *testing.T) {
-	typesense.SetPrefix("dev_")
-	t.Cleanup(func() { typesense.SetPrefix("") })
 	type Fields struct {
 		unexported string  `tyse:"index"`
 		Integer    int     `tyse:"index"`
@@ -143,7 +136,7 @@ func TestCollectionFieldEdgeCases(t *testing.T) {
 		Reference  string  `tyse:"reference:users"`
 	}
 	fields := typesense.ToField(Fields{})
-	if len(fields) != 5 || fields[0].Name != "Integer" || fields[0].Type != "int32" || fields[2].Type != "float" || fields[3].Type != "bool" || fields[4].Reference != "dev_users" {
+	if len(fields) != 5 || fields[0].Name != "Integer" || fields[0].Type != "int32" || fields[2].Type != "float" || fields[3].Type != "bool" || fields[4].Reference != "users" {
 		t.Fatalf("wrong inferred fields: %+v", fields)
 	}
 	for _, input := range []any{

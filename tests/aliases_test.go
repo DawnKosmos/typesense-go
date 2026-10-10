@@ -14,7 +14,7 @@ func aliases(t *testing.T, client *typesense.Client) {
 	for _, target := range []string{data.AliasCollectionName, data.AliasTargetName} {
 		created, err := client.Aliases().Upsert(t.Context(), data.AliasName, &api.CollectionAliasSchema{CollectionName: target})
 		requireNoError(t, err)
-		if created.Name != typesense.Prefix(data.AliasName) || created.CollectionName != typesense.Prefix(target) {
+		if created.Name != data.AliasName || created.CollectionName != target {
 			t.Fatalf("unexpected alias: %+v", created)
 		}
 		retrieved, err := client.Alias(data.AliasName).Retrieve(t.Context())
@@ -24,13 +24,13 @@ func aliases(t *testing.T, client *typesense.Client) {
 		}
 		throughAlias, err := client.Collection[data.Product](data.AliasName).Retrieve(t.Context())
 		requireNoError(t, err)
-		if throughAlias.Name != typesense.Prefix(target) {
+		if throughAlias.Name != target {
 			t.Fatalf("alias selected wrong collection: %+v", throughAlias)
 		}
 	}
 	list, err := client.Aliases().Retrieve(t.Context())
 	requireNoError(t, err)
-	if len(list) != 1 || list[0].Name != typesense.Prefix(data.AliasName) {
+	if len(list) != 1 || list[0].Name != data.AliasName {
 		t.Fatalf("unexpected aliases: %+v", list)
 	}
 	_, err = client.Alias(data.AliasName).Delete(t.Context())

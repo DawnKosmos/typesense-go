@@ -36,7 +36,5 @@ func startClient(t *testing.T) (*typesense.Client, string) {
 	requireNoError(t, err)
 	server := "http://" + net.JoinHostPort(host, port.Port())
 	client := authenticatedClient(t, server, data.APIKey)
-	typesense.SetPrefix(data.Prefix)
-	t.Cleanup(func() { typesense.SetPrefix("") })
 	return client, server
 }

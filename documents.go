@@ -72,7 +72,6 @@ func (d *Documents) Search(ctx context.Context, params *api.SearchCollectionPara
 		return nil, fmt.Errorf("typesense: search parameters must not be nil")
 	}
 	options := *params
-	options.SearchParameters = prefixSearch(options.SearchParameters)
 	response, err := d.apiClient.SearchCollectionWithResponse(ctx,
 		d.collectionName, &options)
 	if err != nil {

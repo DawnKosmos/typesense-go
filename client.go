@@ -12,19 +12,8 @@ import (
 	"github.com/sony/gobreaker"
 )
 
-/*
-The Prefix is automatically attached to joins and collections schema name.
-e.g. Collection user with prefix 'dev_' would end up being 'dev_user'
-*/
-var _prefix string
-
 func Version() string {
 	return api.Version
-}
-
-// SetPrefix configures the collection namespace. Call before constructing clients or schemas.
-func SetPrefix(s string) {
-	_prefix = s
 }
 
 // Client provides Typesense operations with configured authentication and transport.
@@ -35,7 +24,7 @@ type Client struct {
 
 // Alias selects a collection alias by name.
 func (c *Client) Alias(name string) *Alias {
-	return &Alias{client: c.c, name: Prefix(name)}
+	return &Alias{client: c.c, name: name}
 }
 
 // Aliases provides operations on all collection aliases.
@@ -145,7 +134,7 @@ func (c *Client) Collections() *Collections {
 
 // Collection selects a collection with response type T.
 func (c *Client) Collection[T any](name string) *Collection[T] {
-	return &Collection[T]{apiClient: c.c, name: Prefix(name)}
+	return &Collection[T]{apiClient: c.c, name: name}
 }
 
 // GenericCollection selects a collection with the response type T.

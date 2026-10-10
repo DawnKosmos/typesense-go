@@ -56,10 +56,8 @@ expires_at is an additional key option: an absolute Unix timestamp in seconds,
 earlier than the parent key's expiry. Typesense enforces the embedded search
 parameters; clients cannot override them to bypass the restrictions. Actions
 and permitted collections come from the parent key. Joined data can be exposed
-through searches on a permitted collection. The configured Prefix is applied to
-JOIN collection names in filter_by, include_fields, exclude_fields, sort_by and
-facet_by, including nested JOINs. Already prefixed names and quoted values stay
-unchanged. The caller's parameter map is not modified.
+through searches on a permitted collection. Collection names in JOIN expressions
+are used as supplied. The caller's parameter map is not modified.
 
 Generate the key on your backend and use it as X-TYPESENSE-API-KEY for searches.
 Revoking the parent invalidates its scoped keys. The format is:
@@ -77,14 +75,7 @@ func GenerateScopedSearchKey(searchKey string, params map[string]any) (string, e
 	if len(searchKey) < 4 {
 		return "", fmt.Errorf("typesense: parent search key must contain at least 4 bytes")
 	}
-	var normalized map[string]any
-	if params != nil {
-		normalized = make(map[string]any, len(params))
-		for name, value := range params {
-			normalized[name] = prefixSearchParam(name, value)
-		}
-	}
-	encoded, err := json.Marshal(normalized)
+	encoded, err := json.Marshal(params)
 	if err != nil {
 		return "", err
 	}

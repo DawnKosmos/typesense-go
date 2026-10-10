@@ -10,15 +10,6 @@ import (
 	"typesense/optional"
 )
 
-// Prefix applies the prefix configured with SetPrefix once.
-// Configure the prefix before constructing clients or schemas.
-func Prefix(name string) string {
-	if _prefix == "" || strings.HasPrefix(name, _prefix) {
-		return name
-	}
-	return _prefix + name
-}
-
 // ToField builds fields from JSON names and tyse options and panics on invalid input.
 // Untagged fields are skipped; untagged embedded structs are flattened.
 func ToField(in any) []api.Field {
@@ -29,7 +20,7 @@ func ToField(in any) []api.Field {
 	return fields
 }
 
-// ToFieldWithName returns a prefixed, lowercase struct name and its tagged fields.
+// ToFieldWithName returns a lowercase struct name and its tagged fields.
 // Struct values, pointers (including nil pointers), and reflect.Type are accepted.
 func ToFieldWithName(in any) (string, []api.Field, error) {
 	typ, ok := in.(reflect.Type)
@@ -56,7 +47,7 @@ func ToFieldWithName(in any) (string, []api.Field, error) {
 	}
 	name := ""
 	if typ.Name() != "" {
-		name = Prefix(strings.ToLower(typ.Name()))
+		name = strings.ToLower(typ.Name())
 	}
 	return name, fields, nil
 }
@@ -144,7 +135,7 @@ func parseField(typ reflect.Type, name, tag string) (api.Field, error) {
 				}
 				field.NumDim = dim
 			case "join", "reference":
-				field.Reference = prefixReference(value)
+				field.Reference = value
 			case "type":
 				if !validFieldType(api.Type(value)) {
 					return api.Field{}, fmt.Errorf("unsupported field type %q", value)
@@ -163,14 +154,6 @@ func parseField(typ reflect.Type, name, tag string) (api.Field, error) {
 		field.Type = string(inferred)
 	}
 	return field, nil
-}
-
-func prefixReference(reference string) string {
-	collection, field, found := strings.Cut(reference, ".")
-	if !found {
-		return Prefix(reference)
-	}
-	return Prefix(collection) + "." + field
 }
 
 func typeAllowed(typ reflect.Type) (api.Type, error) {

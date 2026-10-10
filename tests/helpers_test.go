@@ -182,7 +182,7 @@ func requireFields(t *testing.T, object map[string]any, expected ...string) {
 
 func joinedObject(t *testing.T, document map[string]any, name string) map[string]any {
 	t.Helper()
-	object, ok := document[typesense.Prefix(name)].(map[string]any)
+	object, ok := document[name].(map[string]any)
 	if !ok {
 		t.Fatalf("joined %s is not an object: %+v", name, document)
 	}

@@ -13,8 +13,8 @@ func multiSearch(t *testing.T, client *typesense.Client) {
 	selected := createCollection(t, client, data.MultiSearchCollectionName)
 	seedDocuments(t, selected.Documents(), data.Products())
 	searches := api.MultiSearchSearchesParameter{Searches: []api.MultiSearchCollectionParameters{
-		{Collection: typesense.Prefix(data.MultiSearchCollectionName), Q: "backpack", QueryBy: "name"},
-		{Collection: typesense.Prefix(data.MultiSearchCollectionName), Q: "mug", QueryBy: "name"},
+		{Collection: data.MultiSearchCollectionName, Q: "backpack", QueryBy: "name"},
+		{Collection: data.MultiSearchCollectionName, Q: "mug", QueryBy: "name"},
 	}}
 	result, err := client.MultiSearch().Perform(t.Context(), nil, searches)
 	requireNoError(t, err)
@@ -49,8 +49,8 @@ func multiSearch(t *testing.T, client *typesense.Client) {
 	t.Run("DifferentCollectionsAndFilters", func(t *testing.T) {
 		fixtureCollection[data.CatalogItem](t, client, data.MultiSearchCatalogCollection, "catalog.jsonl")
 		requests := api.MultiSearchSearchesParameter{Searches: []api.MultiSearchCollectionParameters{
-			{Collection: typesense.Prefix(data.MultiSearchCollectionName), Q: "*", QueryBy: "name", FilterBy: "category:=outdoors"},
-			{Collection: typesense.Prefix(data.MultiSearchCatalogCollection), Q: "*", QueryBy: "name", FilterBy: "in_stock:=true"},
+			{Collection: data.MultiSearchCollectionName, Q: "*", QueryBy: "name", FilterBy: "category:=outdoors"},
+			{Collection: data.MultiSearchCatalogCollection, Q: "*", QueryBy: "name", FilterBy: "in_stock:=true"},
 		}}
 		result, err := client.MultiSearch().Perform(t.Context(), nil, requests)
 		requireNoError(t, err)

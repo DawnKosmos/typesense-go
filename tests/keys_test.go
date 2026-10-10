@@ -9,11 +9,7 @@ import (
 
 func createSearchKey(t *testing.T, client *typesense.Client, collections ...string) *api.APIKey {
 	t.Helper()
-	names := make([]string, len(collections))
-	for i, name := range collections {
-		names[i] = typesense.Prefix(name)
-	}
-	created, err := client.Keys().Create(t.Context(), &api.APIKeySchema{Description: data.SearchKeyDescription, Actions: []string{"documents:search"}, Collections: names})
+	created, err := client.Keys().Create(t.Context(), &api.APIKeySchema{Description: data.SearchKeyDescription, Actions: []string{"documents:search"}, Collections: collections})
 	requireNoError(t, err)
 	cleanupDelete(t, "search key", client.Key(created.ID).Delete)
 	if created.Value == "" {

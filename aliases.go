@@ -30,8 +30,7 @@ func (a *Aliases) Upsert(ctx context.Context, name string, schema *api.Collectio
 		return nil, fmt.Errorf("typesense: alias schema must not be nil")
 	}
 	body := *schema
-	body.CollectionName = Prefix(body.CollectionName)
-	response, err := a.client.UpsertAliasWithResponse(ctx, Prefix(name), body)
+	response, err := a.client.UpsertAliasWithResponse(ctx, name, body)
 	if err != nil {
 		return nil, err
 	}

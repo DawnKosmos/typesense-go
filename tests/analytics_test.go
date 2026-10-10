@@ -14,7 +14,7 @@ func analytics(t *testing.T, client *typesense.Client) {
 	_, err := selected.Documents().Create(t.Context(), data.Products()[0], nil)
 	requireNoError(t, err)
 	rules := client.Analytics().Rules()
-	rule := &api.AnalyticsRuleCreate{Name: data.RuleName, Collection: typesense.Prefix(data.AnalyticsCollectionName), EventType: "click", Type: api.Log, RuleTag: data.RuleTag}
+	rule := &api.AnalyticsRuleCreate{Name: data.RuleName, Collection: data.AnalyticsCollectionName, EventType: "click", Type: api.Log, RuleTag: data.RuleTag}
 	created, err := rules.Create(t.Context(), []*api.AnalyticsRuleCreate{rule})
 	requireNoError(t, err)
 	if len(created) != 1 || created[0].Name != rule.Name || created[0].Type != api.Log {

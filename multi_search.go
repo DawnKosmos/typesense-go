@@ -18,7 +18,6 @@ type MultiSearch struct {
 
 /* Perform returns separate results for each search, preserving individual search errors in the results. */
 func (m *MultiSearch) Perform(ctx context.Context, commonSearchParams *api.MultiSearchParams, searchParams api.MultiSearchSearchesParameter) (*api.MultiSearchResult, error) {
-	commonSearchParams, searchParams = prefixMultiSearch(commonSearchParams, searchParams)
 	response, err := m.apiClient.MultiSearchWithResponse(ctx, commonSearchParams, searchParams)
 	if err != nil {
 		return nil, err
@@ -34,7 +33,6 @@ func (m *MultiSearch) Perform(ctx context.Context, commonSearchParams *api.Multi
 
 /* PerformWithContentType sends the searches using the specified content type and returns the response wrapper. */
 func (m *MultiSearch) PerformWithContentType(ctx context.Context, commonSearchParams *api.MultiSearchParams, searchParams api.MultiSearchSearchesParameter, contentType string) (*api.MultiSearchResponse, error) {
-	commonSearchParams, searchParams = prefixMultiSearch(commonSearchParams, searchParams)
 	body, err := json.Marshal(searchParams)
 	if err != nil {
 		return nil, err
@@ -58,7 +56,6 @@ func (m *MultiSearch) PerformUnion(ctx context.Context, commonSearchParams *api.
 		return nil, fmt.Errorf("typesense: union must be unset or true when calling PerformUnion")
 	}
 	searchParams.Union = optional.True
-	commonSearchParams, searchParams = prefixMultiSearch(commonSearchParams, searchParams)
 	response, err := m.apiClient.MultiSearchWithResponse(ctx, commonSearchParams, searchParams)
 	if err != nil {
 		return nil, err

@@ -11,8 +11,8 @@ import (
 
 func joins(t *testing.T, client *typesense.Client) {
 	fixtures := accessFixture(t, client)
-	users, organizations, projects, grants := typesense.Prefix(data.UsersCollection), typesense.Prefix(data.OrganizationsCollection), typesense.Prefix(data.ProjectsCollection), typesense.Prefix(data.GrantsCollection)
-	t.Run("AutomaticSearchPrefixes", func(t *testing.T) {
+	users, organizations, projects, grants := data.UsersCollection, data.OrganizationsCollection, data.ProjectsCollection, data.GrantsCollection
+	t.Run("NestedSearchJoins", func(t *testing.T) {
 		params := api.SearchParameters{
 			FilterBy:      "archived:=false && $users($organizations(id:=" + data.AlphaOrganizationID + "))",
 			IncludeFields: "id,name,$users(id,name,$organizations(id,name))",
@@ -29,7 +29,7 @@ func joins(t *testing.T, client *typesense.Client) {
 			t.Fatalf("incorrect nested join: %+v", organization)
 		}
 	})
-	t.Run("PrefixedReferences", func(t *testing.T) {
+	t.Run("SchemaReferences", func(t *testing.T) {
 		schema, err := fixtures.projects.Retrieve(t.Context())
 		requireNoError(t, err)
 		references := map[string]string{}

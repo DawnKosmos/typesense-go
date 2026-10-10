@@ -53,7 +53,6 @@ func (c *Collection[T]) Update(ctx context.Context, schema *api.CollectionUpdate
 		return nil, fmt.Errorf("typesense: collection update schema must not be nil")
 	}
 	body := *schema
-	body.Fields = prefixFields(schema.Fields)
 	response, err := c.apiClient.UpdateCollectionWithResponse(ctx, c.name, body)
 	if err != nil {
 		return nil, err

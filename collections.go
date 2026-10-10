@@ -31,8 +31,6 @@ func (c *Collections) Create(ctx context.Context, schema *api.CollectionSchema) 
 		return nil, fmt.Errorf("typesense: collection schema must not be nil")
 	}
 	body := *schema
-	body.Name = Prefix(body.Name)
-	body.Fields = prefixFields(schema.Fields)
 	response, err := c.apiClient.CreateCollectionWithResponse(ctx, body)
 	if err != nil {
 		return nil, err

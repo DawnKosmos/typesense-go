@@ -30,7 +30,7 @@ func collection(t *testing.T, client *typesense.Client) {
 		if field.Name == "rating" {
 			found = true
 		}
-		if field.Name == "owner_id" && field.Reference == typesense.Prefix(data.ReferenceCollectionName)+".id" {
+		if field.Name == "owner_id" && field.Reference == data.ReferenceCollectionName+".id" {
 			referenceFound = true
 		}
 	}
@@ -38,7 +38,7 @@ func collection(t *testing.T, client *typesense.Client) {
 		t.Fatal("updated field missing")
 	}
 	if !referenceFound {
-		t.Fatal("updated reference missing or not prefixed")
+		t.Fatal("updated reference missing or incorrect")
 	}
 	t.Run("ClearSettingsWithoutDeletingCollection", func(t *testing.T) {
 		_, err := client.SynonymSets().Upsert(t.Context(), data.SynonymSetName, &api.SynonymSetCreateSchema{Items: []api.SynonymItemSchema{}})
@@ -72,7 +72,7 @@ func collection(t *testing.T, client *typesense.Client) {
 	})
 	deleted, err := selected.Delete(t.Context())
 	requireNoError(t, err)
-	if deleted.Name != data.Prefix+data.CollectionName {
+	if deleted.Name != data.CollectionName {
 		t.Fatalf("wrong deleted collection: %s", deleted.Name)
 	}
 	_, err = selected.Retrieve(t.Context())
