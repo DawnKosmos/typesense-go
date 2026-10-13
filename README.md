@@ -29,10 +29,10 @@ on four improvements:
    runtime. Named types such as `api.GeoPoint` supply the information needed to
    infer geographic and image field types without repeating type overrides.
 4. **Room for practical client improvements.** A wrapper around the generated
-   API makes common operations easier to use. Import already accepts typed
-   slices and arrays, writes JSONL, and returns individual document results.
-   Further adjustments can live here while the generated API continues to
-   follow the spec.
+   API makes common operations easier to use. Import now accepts `any` instead
+   of `[]any`, so typed slices and arrays can be passed directly without first
+   converting each element into a `[]any`. Further adjustments can live here
+   while the generated API continues to follow the spec.
 
 ## Getting started
 
@@ -178,7 +178,12 @@ JOIN expressions are used as supplied. Automatic collection prefixing is removed
 
 ## Import and other client improvements
 
-Import accepts a nonempty typed slice or array directly:
+Import's document parameter now accepts `any` instead of `[]any`. A typed
+slice such as `[]Product` cannot be passed as `[]any` in Go; the previous signature
+required allocating a new `[]any` and copying each element into it. The new
+signature accepts the original typed slice or array directly, removing that
+conversion from caller code. It validates that the input is a nonempty slice or
+array:
 
 ```go
 results, err := products.Documents().Import(ctx, []Product{
