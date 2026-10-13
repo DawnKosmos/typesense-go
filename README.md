@@ -1,180 +1,43 @@
 # Typesense Go
 
-**WIP — version 0.1.** This client is under active development. Its API and
-generated types may change before a stable release.
+A Go client that stays close to the Typesense API specification while making the
+Go types and everyday document operations easier to use.
 
-Models generated from the pinned `typesense-api-spec/openapi.yml` submodule
-using `oapi-codegen` v2.8.0. Models and an HTTP client are generated.
+**WIP — version 0.1.** The API and generated types may change before a stable
+release. The project currently requires Go 1.27.1, as declared in `go.mod`.
 
-Generated types live in `api/type.gen.go`, in package `api`. They use
-named inline objects, plain optional values, and acronym normalization.
-All schemas are retained. Inline type names are derived from schema paths.
+## Why this repository exists
 
-`api/version.gen.go` exposes `api.Version`, generated from the spec's
-`info.version` (currently `"30.0"`). This identifies the pinned API specification,
-not the running Typesense server or oapi-codegen version.
+Generating a client from OpenAPI gives us broad API coverage, but the generated
+Go code still needs to be practical to develop against. This repository focuses
+on four improvements:
 
-Optional zero values are omitted through `omitempty,omitzero` tags (Go 1.24+).
-Optional booleans use the three-state type below to preserve explicit false.
-Selected optional numeric fields use pointers to preserve explicit zero. Remaining
-optional numeric zeros, empty strings, and empty slices/maps are omitted, except
-collection-update metadata and synonym sets, which use only `omitzero` to preserve
-explicit empty values. Explicit pointer types supplied through upstream Go
-extensions may remain.
+1. **A direct link to the upstream specification.** The Typesense API spec is a
+   pinned Git submodule. Updating the spec and regenerating the client happen in
+   this repository, without manually copying specification files. Local
+   configuration and overlays make adjustments repeatable while keeping the
+   upstream spec intact.
+2. **Less pointer handling in generated code.** Optional fields and containers
+   such as `*map[string]any` and `*[]T` add allocation, dereferencing, and nil
+   checks to ordinary work. Generation favors plain values, maps, and slices;
+   optional booleans use `optional.Bool` to distinguish unset from explicit
+   `false`. Pointers remain where they are needed to preserve meaningful values,
+   such as an explicitly supplied numeric zero.
+3. **Collection schemas defined alongside Go documents.** `tyse` tags describe
+   indexing, faceting, references, vectors, and other field options on your
+   structs. Helpers build Typesense collection schemas from those structs at
+   runtime. Named types such as `api.GeoPoint` supply the information needed to
+   infer geographic and image field types without repeating type overrides.
+4. **Room for practical client improvements.** A wrapper around the generated
+   API makes common operations easier to use. Import already accepts typed
+   slices and arrays, writes JSONL, and returns individual document results.
+   Further adjustments can live here while the generated API continues to
+   follow the spec.
 
-## Regenerate
+## Getting started
 
-```sh
-git submodule update --init --recursive
-go generate .
-go build ./...
-```
-
-The upstream generator is pinned as a Go tool dependency in `go.mod` at v2.8.0.
-`go tool oapi-codegen` and `go generate .` use that version.
-Edit `codegen/values.yaml` to change generation options and
-`codegen/models.overlay.yaml` to adjust explicit Go type references without editing the upstream spec.
-The overlay also updates the spec's hardcoded `ApiKey` Go reference to `APIKey`
-to match acronym normalization.
-
-This is a playground, not a finalized public API. Query objects remain as supplied
-by upstream. Inline types use the generator's schema-path naming.
-
-The normalization step broadens free-form object maps whose value schema is
-exactly `type: object` to `additionalProperties: true`. This fixes
-`SearchResultHit.Document` to `map[string]any`.
-This is a deliberate schema correction, not a semantics-neutral
-generator option. Typed maps, structured objects, references, and constrained
-value schemas remain unchanged. Currently only the document field matches.
-
-## Three-state booleans
-
-`optional.Bool` is a `uint8` with `None` (0), `False` (1), and `True` (2).
-`codegen/generate/main.go` automatically annotates optional boolean properties
-and primitive optional query/header/cookie parameters throughout the current
-spec. Required booleans and boolean array/map elements retain the normal Go type.
-Existing explicit upstream Go type overrides are preserved. The current spec's
-boolean fields are declared inline; referenced boolean schemas or requiredness
-split across composed schemas would need additional handling if introduced.
-
-The generation command is now:
-
-```sh
-go run ./codegen/generate
-```
-
-It reads the original spec, annotates optional booleans, normalizes free-form maps,
-writes a temporary spec, and runs:
-
-```sh
-go tool oapi-codegen --config codegen/values.yaml <temporary-spec>
-go tool oapi-codegen --config codegen/client.yaml <temporary-spec>
-```
-The type-reference overlay still applies inside oapi-codegen. The temporary directory
-is removed afterward. `go generate .` runs this complete pipeline; running
-oapi-codegen directly against the original spec bypasses boolean annotation.
-
-After oapi-codegen writes the models, the wrapper runs
-`gofmt -w -r 'interface{} -> any' api/type.gen.go api/client.gen.go`. This syntax-aware rewrite
-uses `any` consistently without changing type semantics, strings, or comments.
-
-```go
-field := api.Field{
-    Name: "secret",
-    Type: "string",
-    Index: optional.False,
-    Store: optional.False,
-}
-```
-
-Generated fields have `omitempty,omitzero` tags. `None` is omitted, while
-`False` and `True` serialize as JSON booleans, not integers. Standalone `None`
-serializes as `null`; JSON `null` decodes to `None`. Invalid integer states
-and JSON inputs other than booleans or null return errors.
-Use `optional.FromBool(value)` to convert a regular boolean and `Value()`
-to retrieve `(value, set)`.
-
-## Collection field tags
-
-`ToField(value)` builds `[]api.Field` from JSON names and `tyse` options and panics on invalid
-input. `ToFieldWithName(value)` returns the lowercase struct name, fields, and
-an error. `ToSchema(value)` also builds a collection schema and enables nested
-fields when object fields are present. Struct values, pointers, and
-`reflect.Type` are accepted.
-
-```go
-type Product struct {
-    Name string `json:"name" tyse:"facet"`
-    Owner string `json:"owner" tyse:"join:user.id"`
-    Vector []float32 `json:"vector" tyse:"index,dim:384"`
-    Location [2]float64 `json:"location" tyse:"index,type:geopoint"`
-}
-
-schema, err := typesense.ToSchema(Product{})
-```
-
-Field names come from `json`; an absent or empty JSON name defaults to the Go
-field name. `tyse` contains only Typesense options, such as `tyse:"index,dim:384"`.
-Fields without `tyse`, `tyse:"-"`, and `json:"-"` are skipped. An empty
-`tyse:""` tag includes the field using default options.
-Untagged embedded structs are flattened. Fields default to `index:false`;
-`facet` also enables indexing. Other options are `optional`, `index`, `sort`,
-`infix`, `nostore`, `dim:N`, `join:collection.field`,
-`reference:collection.field`, and `type:TYPE`. Pointer fields require an explicit
-`optional` tag. Go `int` and `int32` map to `int32`, matching the original utility.
-
-Collection names, aliases, schema references, and JOIN expressions are used as
-supplied; there is no automatic collection prefixing. Inferred schema names are
-lowercase Go type names. Caller schemas and search parameters are not mutated.
-Unknown options, unsupported types, invalid dimensions, and duplicate field names
-produce errors.
-
-For collection updates, `Metadata` and `SynonymSets` use only `omitzero`: nil
-leaves a setting unchanged, while a non-nil empty map or slice clears it. Explicit
-`x-omitempty: false` and `x-omitzero: true` overlay rules preserve this behavior
-when regenerating. `Fields` retains `omitempty` because an empty field list is
-rejected by Typesense.
-
-`api/field.go` also provides Go aliases for scalar field types, including
-`api.String`, `api.Int64`, `api.Float`, and `api.Object`. Use slices such as
-`[]api.Float` for arrays. Named types
-`api.GeoPoint`, `api.Boundary`, and `api.Image` are detected as `geopoint`,
-`geopolygon`, and `image` without overrides. `api.GeoPointArray` is an alias for
-`[]api.GeoPoint`. `api.StringOrArray` aliases `any` and requires an explicit
-`type:string*` tag. Automatic schema detection (`auto`) is intentionally omitted.
-
-## Scoped search keys
-
-Build a scoped key on your backend using a parent key with only
-`documents:search` permissions:
-
-```go
-key, err := typesense.NewScopedSearchKeyBuilder(parentSearchKey).
-    FilterBy("tenant_id:=42 && $users(id:=user-1)").
-    IncludeFields("id", "name", "price", "$users(name)").
-    ExcludeFields("embedding", "private_notes", "$users(email)").
-    LimitHits(200).
-    ExpiresAt(time.Now().Add(time.Hour)).
-    Param("highlight_fields", "name").
-    Build()
-```
-
-Use the result as `X-TYPESENSE-API-KEY` for searches. JOINs require the appropriate
-schema references and exact collection names in expressions. Set expiry earlier
-than the parent's expiry.
-
-The builder also provides `Query`, `QueryBy`, `SortBy`, `FacetBy`, `GroupBy`,
-`Page`, `PerPage`, `UseCache`, and `CacheTTL` (seconds). `Param` accepts any
-search parameter by its JSON name, preserving explicit `false`, `0`, and empty
-values. Repeated setters replace earlier values, including filters and field
-lists. Methods mutate the builder; create a separate builder for each scope.
-`Build` can be called repeatedly and returns encoding or parent-key errors.
-Typesense validates search semantics when the key is used. Parameters are signed,
-not encrypted. The existing `GenerateScopedSearchKey` map API remains available.
-
-## Client operations
-
-The root package initializes a concrete `*api.ClientWithResponses`:
+The examples use the current module paths: `typesense`, `typesense/api`, and
+`typesense/optional`.
 
 ```go
 client, err := typesense.NewClient(
@@ -184,154 +47,256 @@ client, err := typesense.NewClient(
 if err != nil {
     return err
 }
-alias, err := client.Alias("products").Retrieve(ctx)
+
+type Product struct {
+    ID       string       `json:"id" tyse:"index"`
+    Name     string       `json:"name" tyse:"index"`
+    Category string       `json:"category" tyse:"facet"`
+    Location api.GeoPoint `json:"location" tyse:"index"`
+}
+
+schema, err := typesense.ToSchema(Product{})
+if err != nil {
+    return err
+}
+schema.Name = "products"
+if _, err := client.Collections().Create(ctx, schema); err != nil {
+    return err
+}
+
+products := client.Collection[Product]("products")
+_, err = products.Documents().Create(ctx, Product{
+    ID:       "1",
+    Name:     "Backpack",
+    Category: "outdoors",
+    Location: api.GeoPoint{52.5200, 13.4050},
+}, nil)
 ```
 
-`client.go` holds initialization and defaults. `client_option.go` holds
-`ClientConfig` and options for authentication, nodes, retries, timeouts, circuit
-breaking, custom HTTP clients, and concrete API-client injection.
-`WithClientConfig` replaces the entire configuration; later options override it.
-`WithAPIClient` bypasses the built-in transport configuration. The generated
-client is held in the private `c` field; its methods are not promoted onto the
-root client. `Alias(name)` returns a concrete `*Alias` with `Retrieve` and `Delete`
-methods returning `*api.CollectionAlias`. `Aliases()` returns a concrete
-`*Aliases` with `Retrieve` (list all) and `Upsert` methods. The private API field
-uses the generated `api.ClientWithResponsesInterface`. Unexpected HTTP responses return
-`*typesense.HTTPError` with their status and body.
+`Collection[T](name)` selects the document type used by `Document(id).Retrieve`,
+`Update`, and `Delete`. `Documents()` provides create, upsert, bulk update/delete,
+search, import, and export operations. Collection metadata operations are
+`Retrieve`, `Update`, and `Delete`.
 
-`Analytics()` returns a concrete `*Analytics`. `Events()` provides `Create` and
-`Retrieve`; `Rules()` provides batch `Create` and `Retrieve`; `Rule(name)` provides
-`Retrieve`, `Update`, and `Delete`. Rule creation accepts both single-object and
-array success responses. If a batch contains per-rule errors, it returns the
-successful rules alongside an error describing the failed entries.
+## Go types with less pointer handling
 
-`Collections()` returns a concrete `*Collections` with `Create(ctx, schema)`
-and `Retrieve(ctx, params)` methods. Creation returns the HTTP 201 collection
-body, and retrieval returns the collection list from HTTP 200. Unexpected HTTP
-responses return `*typesense.HTTPError`.
+The generation configuration skips optional pointers by default. A postprocessing
+step also removes outer pointers from map and slice/array response fields,
+including named container types, and adjusts their getters and parsers.
+Object pointers and pointers to elements inside slices remain unchanged.
 
-`Collection[T](name)` selects a concrete `*Collection[T]` using Go 1.27 generic
-methods, for example `client.Collection[Product]("products")`.
-Use `client.Collection[map[string]any](name)` for arbitrary JSON objects.
-The package function `GenericCollection[T]` remains available as a convenience.
-Collections provide `Retrieve`, `Update`, and `Delete`.
-Collection methods return collection metadata. `Document(id)` returns a concrete
-`*Document[T]` with `Retrieve(ctx)`, `Update(ctx, document, params)`, and
-`Delete(ctx)` methods decoding document bodies into `T`. Update accepts partial
-JSON objects and optional `*api.DocumentIndexParameters`; nil parameters use
-server defaults. HTTP failures return `*typesense.HTTPError`.
+Optional booleans retain presence without requiring a `*bool`:
 
-`Collection[T].Documents()` returns a concrete `*Documents` with `Create`,
-`Upsert`, `Update`, `Delete`, `Search`, `Export`, `Import`, and `ImportJsonl`.
-`Import(ctx, documents, params)` accepts any nonempty slice or array, including
-`[]Product` and `[N]Product`, and encodes each element as a JSONL line. Each
-returned `api.ImportDocumentResponse` reports that document's success or failure;
-HTTP 200 does not imply that all imported documents succeeded. Decoding failures
-return the results already read alongside the error. Import defaults to action
-`create` and batch size 40, without modifying caller parameters. Export and
-`ImportJsonl` return streams that callers must close.
-
-The default HTTP timeout is 5 seconds, retry interval is 100 milliseconds, and
-unhealthy nodes become eligible again after 1 minute. Retries default to the
-number of nodes plus one when a nearest node is configured. Request bodies are
-retried only when replayable through `GetBody`; streaming bodies are sent once.
-The circuit breaker counts transport failures and final 5xx responses as failures,
-while preserving HTTP error responses for the generated response parsers.
-
-All generated code lives in package `api` (import `typesense/api`). Models are
-in `api/type.gen.go`. Shared client configuration is in `api/client.gen.go`,
-and interfaces are in `api/client_interfaces.gen.go`.
-
-After generation, `codegen/generate/split.go` splits the client by each operation's
-first OpenAPI tag. For example, collection methods, request constructors, response
-wrappers, and parsers live in `api/client_collections.gen.go`; documents and
-analytics have their own files. Declarations and method signatures are preserved.
-The splitter removes unused imports and obsolete files bearing its generated
-header. It does not split the model file.
-
-Before splitting, `codegen/generate/containers.go` removes outer pointers from
-map and array/slice response fields, including named container types. Getters
-return the containers directly, and parsers assign decoded values directly.
-Pointers to objects and pointers inside slices remain unchanged. A nil container
-can mean JSON null or an unmatched response, so wrappers use status and content
-type to recognize successful container responses.
-
-`Client` methods return raw `*http.Response` values. `ClientWithResponses`
-provides parsed response wrappers with fields for each declared status, such as
-`JSON201`, `JSON400`, and `JSON409` for collection creation. HTTP error statuses
-are represented in those wrappers; transport and decoding failures return Go errors.
-Authentication is configured through `WithRequestEditorFn` by setting the
-`X-TYPESENSE-API-KEY` header. Use `WithHTTPClient` to supply a client with a timeout.
-
-The wrapper rewrites generated `runtime.StyleParamWithOptions` calls to
-`styleParamWithOptions` in `api/query.go`. For object-valued query parameters, this
-adapter first uses JSON encoding to honor omission tags and `optional.Bool`,
-then lets the runtime serialize the resulting map. Other parameters use normal
-runtime styling, with direct `optional.Bool` values handled as booleans.
-This avoids emitting unset search fields and numeric three-state values.
-
-`tests/client_test.go` contains the single integration entry point, `TestClient`.
-It starts an isolated Typesense 30.2 container, waits for health, and runs feature
-subtests from separate files. These exercise health, collections, aliases, typed
-document CRUD, search, import/export, analytics, API and scoped keys, presets,
-stopwords, curation sets and items, synonym sets and items, stemming, MultiSearch,
-diagnostics, snapshots, leader voting, cache clearing, database compaction, and
-slow request configuration. LLM model listing runs normally; creating and updating
-LLM models is explicitly skipped because it requires a provider and credentials.
-Shared names, IDs, typed fixtures, and embedded JSONL fixtures live in
-`tests_data/`. Shared helpers load and seed fixtures, register cleanup, and check
-search results and field projections. The container and its data are removed
-automatically.
-
-Organizations, users, projects, and access grants exercise forward, reverse, nested,
-and many-to-many joins, including sorting and filtering across references. Scoped
-keys restrict users to permitted projects and fields; tests attempt to widen those
-restrictions, tamper with signatures, access other collections, and use expired or
-revoked keys. Catalog fixtures cover facets, grouping, nested objects, geo filters,
-and vector search with supplied embeddings. Separate collections check synonym,
-stopword, and stemming behavior and searches across different collection schemas.
-
-Unit tests live beside the code: `key_scoped_test.go` checks signatures and the
-builder, and `collection_field_test.go` checks schema tags and type inference.
-Client unit tests check configuration, retries, cancellation, error propagation,
-stream ownership, partial JSONL decoding, and LLM wrappers using local responses.
-`optional/bool_test.go` and `api/query_test.go` check JSON presence and query encoding.
-
-Run all tests with Docker running:
-
-```sh
-go test ./...
+```go
+field := api.Field{
+    Name:  "secret",
+    Type:  string(api.STRING),
+    Index: optional.False,
+    Store: optional.False,
+}
 ```
 
-Run a single feature, or run the checks that do not require Docker:
+| Value | Meaning in an optional JSON field |
+| --- | --- |
+| `optional.None` | Omit the field. |
+| `optional.False` | Send `false`. |
+| `optional.True` | Send `true`. |
+
+`optional.Bool` serializes as a JSON boolean, not its underlying integer.
+Standalone `None` serializes as `null`, and JSON `null` decodes to `None`.
+Use `optional.FromBool(value)` to convert a regular boolean and `Value()` to
+retrieve `(value, set)`. Required booleans and boolean array/map elements remain
+ordinary Go booleans.
+
+Presence still matters. Most optional values use `omitempty,omitzero`, so zero
+numbers, empty strings, and empty containers are omitted. Selected numeric fields
+keep pointers: for example, `PerPage: new(0)` sends zero, while nil omits it.
+See [the numeric presence audit](codegen/optional-numbers.md) for the fields and
+remaining limitations. Explicit upstream Go type overrides may also retain
+pointers.
+
+Collection-update `Metadata` and `SynonymSets` use only `omitzero`: nil leaves
+settings unchanged, while a non-nil empty map or slice explicitly clears them.
+Object-valued query parameters honor these omission rules and `optional.Bool`
+through the adapter in [api/query.go](api/query.go).
+
+## Collection schemas from `tyse` tags
+
+The tags generate collection schemas from your application types; they are
+separate from the OpenAPI generation that produces the HTTP client and API models.
+
+```go
+type Place struct {
+    Name     string            `json:"name" tyse:"index"`
+    Category string            `json:"category" tyse:"facet"`
+    OwnerID  string            `json:"owner_id" tyse:"index,join:users.id"`
+    Vector   []float32         `json:"vector" tyse:"index,dim:384"`
+    Location api.GeoPoint      `json:"location" tyse:"index"`
+    Areas    api.Boundary      `json:"areas" tyse:"index"`
+    Image    api.Image         `json:"image" tyse:"optional"`
+    Nearby   api.GeoPointArray `json:"nearby" tyse:"index"`
+}
+
+schema, err := typesense.ToSchema(Place{})
+```
+
+`api.GeoPoint` contains `[latitude, longitude]`; `api.GeoPointArray` is a slice of
+points. `api.Boundary` contains alternating latitude and longitude values for a
+polygon. `api.Image` holds a base64-encoded image. Their named types let schema
+inference select `geopoint`, `geopoint[]`, `geopolygon`, and `image`. For a plain
+array, declare the meaning explicitly:
+
+```go
+Location [2]float64 `json:"location" tyse:"index,type:geopoint"`
+```
+
+| Helper | Result |
+| --- | --- |
+| `ToField(value)` | `[]api.Field`; panics on invalid input. |
+| `ToFieldWithName(value)` | Lowercase struct name, fields, and an error. |
+| `ToSchema(value)` | Collection schema and an error; enables nested fields for objects. |
+| `client.Collections().CreateFromStruct(ctx, value)` | Infers and creates a collection from a named struct. |
+
+Struct values, pointers, and `reflect.Type` are accepted. Anonymous structs need
+an explicit collection name when using `ToSchema`.
+
+Field names come from `json`, defaulting to the Go field name when absent or empty.
+Fields without `tyse`, with `tyse:"-"`, or with `json:"-"` are skipped. An empty
+`tyse:""` includes the field with default options. Untagged embedded structs are
+flattened. Fields default to `index:false`; `facet` also enables indexing.
+
+Supported options are `index`, `facet`, `optional`, `sort`, `infix`, `nostore`,
+`dim:N`, `join:collection.field`, `reference:collection.field`, and `type:TYPE`.
+Pointer fields require an explicit `optional` tag. Unsupported types, unknown
+options, invalid dimensions, and duplicate field names produce errors.
+
+[api/field.go](api/field.go) also supplies scalar aliases and field-type constants.
+`api.StringOrArray` requires `tyse:"type:string*"`; automatic schema detection
+(`auto`) is intentionally omitted. Collection names, aliases, references, and
+JOIN expressions are used as supplied. Automatic collection prefixing is removed;
+[prefix.go](prefix.go) records the design considerations for revisiting it.
+
+## Import and other client improvements
+
+Import accepts a nonempty typed slice or array directly:
+
+```go
+results, err := products.Documents().Import(ctx, []Product{
+    {ID: "1", Name: "Backpack", Category: "outdoors"},
+    {ID: "2", Name: "Mug", Category: "kitchen"},
+}, nil)
+```
+
+The wrapper encodes each document as a JSONL line and decodes individual
+`api.ImportDocumentResponse` results. HTTP 200 does not mean every document
+succeeded; inspect each result. If response decoding fails, the method returns
+results already decoded alongside the error. Defaults are action `create` and
+batch size 40, applied without modifying caller parameters.
+
+`Import` buffers the encoded request in memory. For existing JSONL or larger
+inputs, `ImportJsonl` accepts an `io.Reader` and returns the raw response stream.
+Both that stream and the stream returned by `Export` must be closed by the caller.
+
+The wrapper also provides:
+
+- Scoped search-key generation and a builder for signed filters, projections,
+  expiry, and other search parameters.
+- Separate and union multi-search results.
+- Collection aliases, analytics, API keys, presets, synonyms, stopwords,
+  curation sets, stemming, model configuration, and server operations.
+- Configurable authentication, nodes, retries, timeouts, circuit breaking,
+  custom HTTP clients, and API-client injection.
+
+Unexpected HTTP responses return `*typesense.HTTPError` with their status and body.
+The default HTTP timeout is 5 seconds. Streaming requests are sent once unless
+an HTTP request body supports replay through `GetBody`.
+
+### Scoped search keys
+
+Create keys on your backend using a parent key with `documents:search` permissions:
+
+```go
+key, err := typesense.NewScopedSearchKeyBuilder(parentSearchKey).
+    FilterBy("tenant_id:=42 && $users(id:=user-1)").
+    IncludeFields("id", "name", "$users(name)").
+    ExcludeFields("embedding", "private_notes").
+    LimitHits(200).
+    ExpiresAt(time.Now().Add(time.Hour)).
+    Build()
+```
+
+Use the result as `X-TYPESENSE-API-KEY`. JOINs need matching schema references and
+exact collection names. Set expiry earlier than the parent's expiry. Parameters
+are signed, not encrypted, and Typesense validates their meaning when searching.
+The builder's `Param` method and the map-based `GenerateScopedSearchKey` API
+preserve explicit `false`, zero, and empty values.
+
+## Regenerating from the upstream spec
 
 ```sh
-go test -v ./tests -run 'TestClient/Documents'
-go test -v ./tests -run 'TestClient/(Joins|ScopedKeys|SearchFeatures)'
+git submodule update --init --recursive
+go generate .
+go build ./...
+```
+
+The submodule pins the input spec; `go.mod` pins `oapi-codegen` v2.8.0 as a Go tool.
+To target another spec revision, update the submodule checkout, regenerate, and
+commit the submodule revision together with the generated changes.
+
+`go generate .` runs [codegen/generate](codegen/generate/main.go), which:
+
+1. Reads `typesense-api-spec/openapi.yml` and annotates optional booleans.
+2. Normalizes free-form object-valued maps so document payloads can use
+   `map[string]any`, then writes a temporary spec.
+3. Generates models and the HTTP client using the local configs and overlay.
+4. Adapts query encoding, removes outer response-container pointers, uses `any`
+   consistently, and splits the generated client by OpenAPI operation tag.
+5. Generates `api.Version` from the spec's `info.version` and removes the
+   temporary spec.
+
+All schemas are retained. Inline objects receive named types derived from their
+schema paths; acronyms are normalized. The free-form map normalization is a
+local schema correction; typed and constrained map values are preserved. The
+original submodule spec is not modified by generation.
+
+| File | Purpose |
+| --- | --- |
+| [codegen/values.yaml](codegen/values.yaml) | Model generation options. |
+| [codegen/client.yaml](codegen/client.yaml) | HTTP client generation options. |
+| [codegen/models.overlay.yaml](codegen/models.overlay.yaml) | Local type references, presence rules, and response compatibility fixes. |
+| [api/type.gen.go](api/type.gen.go) | Generated API models. |
+| [api/client.gen.go](api/client.gen.go) | Shared generated client configuration. |
+| [api/client_interfaces.gen.go](api/client_interfaces.gen.go) | Generated client interfaces. |
+
+Operation-specific client files live beside them in `api/`. `api.Version`
+identifies the pinned specification, rather than the running server. Running
+`oapi-codegen` directly on the original spec bypasses the local pipeline.
+
+## Testing
+
+Run unit tests without Docker:
+
+```sh
 go test -short ./...
 ```
 
-Run the race detector and record coverage for all packages:
+Run the full suite with Docker running, or select an integration feature:
+
+```sh
+go test ./...
+go test -v ./tests -run 'TestClient/(Joins|ScopedKeys|SearchFeatures)'
+```
+
+The integration suite starts an isolated Typesense 30.2 container and removes it
+afterward. It exercises document CRUD, import/export, collection schemas,
+forward/reverse/nested JOINs, scoped-key restrictions, search features, and other
+client operations. Creating and updating LLM models is skipped because it needs
+provider credentials. Unit tests cover serialization, schema inference,
+scoped-key signing, transport behavior, errors, and partial import responses.
+
+To record coverage and check for races:
 
 ```sh
 go test -race -coverpkg=./... -coverprofile=coverage.out ./...
-go tool cover -func=coverage.out
 go tool cover -html=coverage.out
 ```
-
-Coverage distinguishes the client runtime from generated API code and generation
-tooling. The current suite covers 100% of the field parser, scoped-key generation
-and builder, and optional booleans; client runtime statement coverage is 99.81%.
-The two uncovered runtime statements are defensive error returns: the generated
-client constructor's fixed options cannot fail, and encoding a stemming word
-containing only strings into a bytes buffer cannot fail. They remain in production
-code. Generated API code and generation tooling do not have 100% coverage.
-
-Selected zero-sensitive search controls and NL sampling settings are generated
-as ordinary pointers through explicit overlay overrides: `PerPage: new(0)` sends
-zero; nil omits it. Remaining optional numeric values still omit zero. The models
-and fields are listed in [the numeric presence audit](codegen/optional-numbers.md).
-
-oapi-codegen warns that the client-only config references named models it does
-not emit itself. Those types are provided by the separate models generation in the same
-package; `go build ./...` checks that the references resolve.
